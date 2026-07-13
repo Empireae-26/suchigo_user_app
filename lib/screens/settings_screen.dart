@@ -1,0 +1,274 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'package:suchigo_app/screens/home_screen.dart';
+import 'package:suchigo_app/screens/login_screen.dart';
+import 'package:suchigo_app/screens/privacy_security.dart';
+import 'package:suchigo_app/screens/notification_preferences.dart';
+import 'package:suchigo_app/screens/language_screen.dart';
+import 'package:suchigo_app/screens/help_support_screen.dart';
+import 'package:suchigo_app/screens/about_app_screen.dart';
+import 'package:suchigo_app/providers/settings_provider.dart';
+
+class SettingsScreen extends StatelessWidget {
+  const SettingsScreen({super.key});
+
+  Widget _buildSettingItem(
+    BuildContext context,
+    IconData icon,
+
+    String title, {
+    bool isLogout = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: ListTile(
+        leading: Icon(
+          icon,
+          color: isLogout ? Colors.red : const Color(0xFF1E713D),
+          size: 26,
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            color: isLogout ? Colors.red : Colors.black87,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        trailing: const Icon(
+          Icons.arrow_forward_ios_rounded,
+          color: Colors.grey,
+          size: 16,
+        ),
+        onTap: () async {
+          if (isLogout) {
+            final settingsProvider = Provider.of<SettingsProvider>(
+              context,
+              listen: false,
+            );
+
+            await settingsProvider.logout();
+
+            if (context.mounted) {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => const LoginScreen()),
+                (Route<dynamic> route) => false,
+              );
+            }
+          } else if (title == "Privacy & Security") {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const PrivacyAndSecurity(),
+              ),
+            );
+          } else if (title == "Notification Preferences") {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const NotificationPreferencesScreen(),
+              ),
+            );
+          } else if (title == "Language") {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const LanguageScreen()),
+            );
+          } else if (title == "Help & Support") {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const HelpSupportScreen(),
+              ),
+            );
+          } else if (title == "About App") {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const AboutAppScreen()),
+            );
+          } else {
+            // Handle other settings taps
+          }
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFE6F4E6),
+        body: Column(
+          children: [
+            // --- Header Section ---
+            Stack(
+              children: [
+                Container(
+                  width: double.infinity,
+                  height: 250 + MediaQuery.of(context).padding.top,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF1E713D), Color(0xFF48A86E)],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(40),
+                      bottomRight: Radius.circular(40),
+                    ),
+                  ),
+                  child: const SafeArea(
+                    bottom: false,
+                    child: Center(
+                      child: Text(
+                        "Settings",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 40,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                // --- Decorative Circles (Unchanged) ---
+                Positioned(
+                  top: 20,
+                  left: 60,
+                  child: Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withOpacity(0.15),
+                          Colors.white.withOpacity(0.05),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 40,
+                  right: 40,
+                  child: Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withOpacity(0.2),
+                          Colors.white.withOpacity(0.05),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 10,
+                  right: 100,
+                  child: Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withOpacity(0.1),
+                          Colors.white.withOpacity(0.03),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 20,
+                  left: 40,
+                  child: Container(
+                    width: 70,
+                    height: 70,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withOpacity(0.12),
+                          Colors.white.withOpacity(0.04),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 30),
+
+            // --- Settings List Section ---
+            Expanded(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 25,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ListView(
+                  children: [
+                    _buildSettingItem(
+                      context,
+                      Icons.lock_outline,
+                      "Privacy & Security",
+                    ),
+                    _buildSettingItem(
+                      context,
+                      Icons.notifications_outlined,
+                      "Notification Preferences",
+                    ),
+                    _buildSettingItem(context, Icons.language, "Language"),
+                    _buildSettingItem(
+                      context,
+                      Icons.help_outline,
+                      "Help & Support",
+                    ),
+                    _buildSettingItem(context, Icons.info_outline, "About App"),
+                    // Logout now uses the Provider's logic
+                    _buildSettingItem(
+                      context,
+                      Icons.logout,
+                      "Logout",
+                      isLogout: true,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+}

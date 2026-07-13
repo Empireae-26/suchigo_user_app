@@ -1,0 +1,99 @@
+name: suchigo_app
+description: "A new Flutter project."
+
+publish_to: 'none' 
+
+version: 1.0.0+7
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # --- UI & Icons ---
+  cupertino_icons: ^1.0.8
+  flutter_svg: ^2.2.0
+  lottie: ^3.3.1
+  google_fonts: ^6.2.1
+  gap: ^3.0.1
+  percent_indicator: ^4.2.5
+  material_symbols_icons: ^4.2874.0
+
+  # --- Date Formatting ---
+  intl: ^0.20.2 
+  flutter_local_notifications: ^17.2.1
+  timezone: ^0.9.4
+  
+  # --- Firebase (Core and Auth) ---
+  firebase_core: ^3.0.0 
+  firebase_auth: ^5.0.0 
+  
+  # --- Data & Storage ---
+  sqflite: ^2.4.2
+  shared_preferences: ^2.2.3 
+  flutter_secure_storage: ^9.2.1
+  
+  # --- State Management / Utilities ---
+  provider: ^6.1.5
+  url_launcher: ^6.3.2
+  http: ^1.1.0
+  dio: ^5.4.3+1
+  
+  # --- Location/Path ---
+  path_provider: ^2.1.5
+  geolocator: ^14.0.2
+  geocoding: ^3.0.0
+  flutter_launcher_icons: ^0.14.4
+  # google_mobile_ads: ^7.0.0
+  cloud_functions: ^5.6.2
+
+
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+# --- Launcher Icon Configuration ---
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icons/suchigologo.png"
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/logo.png
+    - assets/images/earth.png
+    - assets/images/Tree.png
+    - assets/images/signin.png
+    - assets/images/login.png
+    - assets/images/profilepic.png
+    - assets/images/Qrcodes.png
+    - assets/images/background.jpg
+    - assets/images/tree (2).png
+    - assets/images/waste.png
+    - assets/images/homesuchi2.png
+    - assets/images/homesuchi1.jpeg
+    - assets/images/banner_logo.jpeg
+    - assets/images/haza.png
+    - assets/images/banner_logo.png
+    - assets/images/advt 01.jpg.jpeg
+
+
+
+    - assets/icons/fb.svg
+    - assets/icons/google.svg
+    - assets/icons/fb.png
+    - assets/icons/pic.png
+    - assets/icons/blacktree.png
+    - assets/icons/message.png
+    - assets/icons/HOME (2).png
+    - assets/icons/bill.png
+    - assets/icons/person.png
+    - assets/icons/Profile.png
+    - assets/icons/settings.png
+    - assets/icons/suchigologo.png

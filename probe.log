@@ -1,0 +1,4 @@
+GET https://suchigoapis.pythonanywhere.com/api/register/ -> status=200
+  Response: {"message":"User Registration Endpoint","method":"POST","description":"Register a new user account verifying the OTP sent to their phone number","required_fields":["username","email","password","phone
+POST https://suchigoapis.pythonanywhere.com/api/register/ -> status=400
+  Response: {"otp":["This field is required."]}
