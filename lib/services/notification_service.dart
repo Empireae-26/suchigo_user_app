@@ -143,4 +143,37 @@ class NotificationService {
       payload: payload,
     );
   }
+
+  Future<void> showBookingConfirmedNotification({
+    required int pickupId,
+    required String wasteType,
+    required String date,
+  }) async {
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'booking_confirmations',
+      'Booking Confirmations',
+      channelDescription: 'Notifications for successful bookings',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    const NotificationDetails platformDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    await _notificationsPlugin.show(
+      pickupId,
+      'Booking Confirmed! 🎉',
+      'Your pickup for $wasteType is scheduled on $date. Thank you for using Suchigo!',
+      platformDetails,
+      payload: 'pickup_$pickupId',
+    );
+  }
 }

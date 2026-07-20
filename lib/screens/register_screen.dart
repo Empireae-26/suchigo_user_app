@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:provider/provider.dart';
 import '../providers/register_provider.dart';
+import 'package:suchigo_app/models/location_models.dart';
+import 'package:suchigo_app/services/location_api_service.dart';
 
 import '../screens/login_screen.dart';
 
@@ -33,6 +35,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailController = TextEditingController();
     _phoneController = TextEditingController();
     _passwordController = TextEditingController();
+    _loadStates();
   }
 
   @override
@@ -191,6 +194,46 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     type: TextInputType.text,
                     isPassword: true,
                     icon: Icons.lock_outline_rounded,
+                  ),
+                  const SizedBox(height: 14),
+                  _buildDropdown(
+                    label: 'State',
+                    hint: _isLoadingStates ? 'Loading states...' : 'Select state',
+                    items: _state,
+                    value: provider.selectedState,
+                    onChanged: _onStateChanged,
+                    enabled: !_isLoadingStates,
+                  ),
+                  _buildDropdown(
+                    label: 'District',
+                    hint: _isLoadingDistricts
+                        ? 'Loading districts...'
+                        : (provider.selectedState == null ? 'Select state first' : 'Select district'),
+                    items: _districts,
+                    value: provider.selectedDistrict,
+                    onChanged: _onDistrictChanged,
+                    enabled: provider.selectedState != null && !_isLoadingDistricts,
+                  ),
+                  _buildDropdown(
+                    label: 'Local Body',
+                    hint: _isLoadingLocalBodies
+                        ? 'Loading local bodies...'
+                        : (provider.selectedDistrict == null ? 'Select district first' : 'Select local body'),
+                    items: _localBodies,
+                    value: provider.selectedLocalBody,
+                    onChanged: _onLocalBodyChanged,
+                    enabled: provider.selectedDistrict != null && !_isLoadingLocalBodies,
+                  ),
+                  _buildDropdown(
+                    label: 'Ward Name & Number',
+                    hint: _isLoadingWards
+                        ? 'Loading wards...'
+                        : (provider.selectedLocalBody == null ? 'Select local body first' : 'Select ward (optional)'),
+                    items: _wards,
+                    value: provider.selectedWard,
+                    onChanged: (v) => setState(() => provider.setSelectedWard(v)),
+                    required: false,
+                    enabled: provider.selectedLocalBody != null && !_isLoadingWards,
                   ),
                   const SizedBox(height: 20),
 
@@ -512,6 +555,405 @@ class _RegisterScreenState extends State<RegisterScreen> {
       },
     );
   }
+
+  List<LocationState> _apiStates = [];
+  List<LocationDistrict> _apiDistricts = [];
+  List<LocationLocalBody> _apiLocalBodies = [];
+  List<LocationWard> _apiWards = [];
+
+  bool _isLoadingStates = false;
+  bool _isLoadingDistricts = false;
+  bool _isLoadingLocalBodies = false;
+  bool _isLoadingWards = false;
+
+  List<String> get _state => _apiStates.map((s) => s.name).toList();
+  List<String> get _districts => _apiDistricts.map((d) => d.name).toList();
+  List<String> get _localBodies => _apiLocalBodies.map((l) => l.name).toList();
+  List<String> get _wards => _apiWards.map((w) => w.wardName).toList();
+
+  Future<void> _loadStates() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingStates = true;
+    });
+    try {
+      final states = await LocationApiService.fetchStates();
+      if (mounted) {
+        setState(() {
+          _apiStates = states;
+          if (_apiStates.length == 1) {
+            final stateName = _apiStates[0].name;
+            context.read<RegisterProvider>().setSelectedState(stateName);
+            _loadDistricts(_apiStates[0].id);
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('[RegisterScreen] Error loading states: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingStates = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadDistricts(int stateId) async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingDistricts = true;
+    });
+    try {
+      final districts = await LocationApiService.fetchDistricts(stateId);
+      if (mounted) {
+        setState(() {
+          _apiDistricts = districts;
+        });
+      }
+    } catch (e) {
+      debugPrint('[RegisterScreen] Error loading districts: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingDistricts = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadLocalBodies(int districtId) async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingLocalBodies = true;
+    });
+    try {
+      final localBodies = await LocationApiService.fetchLocalBodies(districtId);
+      if (mounted) {
+        setState(() {
+          _apiLocalBodies = localBodies;
+        });
+      }
+    } catch (e) {
+      debugPrint('[RegisterScreen] Error loading local bodies: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingLocalBodies = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadWards(int localBodyId) async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingWards = true;
+    });
+    try {
+      final wards = await LocationApiService.fetchWards(localBodyId);
+      if (mounted) {
+        setState(() {
+          _apiWards = wards;
+        });
+      }
+    } catch (e) {
+      debugPrint('[RegisterScreen] Error loading wards: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingWards = false;
+        });
+      }
+    }
+  }
+
+  void _onStateChanged(String? name) {
+    final provider = context.read<RegisterProvider>();
+    if (provider.selectedState == name) return;
+    setState(() {
+      provider.setSelectedState(name);
+      _apiDistricts = [];
+      _apiLocalBodies = [];
+      _apiWards = [];
+    });
+    if (name != null) {
+      final stateObj = _apiStates.firstWhere((s) => s.name == name);
+      _loadDistricts(stateObj.id);
+    }
+  }
+
+  void _onDistrictChanged(String? name) {
+    final provider = context.read<RegisterProvider>();
+    if (provider.selectedDistrict == name) return;
+    setState(() {
+      provider.setSelectedDistrict(name);
+      _apiLocalBodies = [];
+      _apiWards = [];
+    });
+    if (name != null) {
+      final districtObj = _apiDistricts.firstWhere((d) => d.name == name);
+      _loadLocalBodies(districtObj.id);
+    }
+  }
+
+  void _onLocalBodyChanged(String? name) {
+    final provider = context.read<RegisterProvider>();
+    if (provider.selectedLocalBody == name) return;
+    setState(() {
+      provider.setSelectedLocalBody(name);
+      _apiWards = [];
+    });
+    if (name != null) {
+      final localBodyObj = _apiLocalBodies.firstWhere((l) => l.name == name);
+      _loadWards(localBodyObj.id);
+    }
+  }
+
+  Widget _buildDropdown({
+    required String label,
+    required String hint,
+    required List<String> items,
+    required String? value,
+    required ValueChanged<String?> onChanged,
+    bool required = true,
+    bool enabled = true,
+  }) {
+    const primaryGreen = Color(0xFF1E713D);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              if (required) ...[
+                const SizedBox(width: 4),
+                const Text(
+                  '*',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 6),
+          InkWell(
+            onTap: enabled
+                ? () => _showSelectionBottomSheet(
+                      title: label,
+                      items: items,
+                      selectedValue: value,
+                      onSelected: onChanged,
+                    )
+                : null,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+              decoration: BoxDecoration(
+                color: enabled ? const Color(0xFFF9FBF9) : Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: value != null ? primaryGreen.withOpacity(0.5) : Colors.grey.shade200,
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      value ?? hint,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: enabled
+                            ? (value != null ? Colors.black87 : Colors.grey.shade400)
+                            : Colors.grey.shade500,
+                        fontWeight: value != null ? FontWeight.w500 : FontWeight.normal,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: value != null ? primaryGreen : (enabled ? Colors.grey.shade600 : Colors.grey.shade300),
+                    size: 22,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSelectionBottomSheet({
+    required String title,
+    required List<String> items,
+    required String? selectedValue,
+    required ValueChanged<String?> onSelected,
+  }) {
+    const primaryGreen = Color(0xFF1E713D);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        String searchQuery = "";
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final filteredItems = items
+                .where((item) => item.toLowerCase().contains(searchQuery.toLowerCase()))
+                .toList();
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Container(
+                height: MediaQuery.of(context).size.height * 0.65,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 12),
+                    Container(
+                      width: 40,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2.5),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Select $title',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => Navigator.pop(context),
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.close_rounded, size: 20, color: Colors.black54),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.search_rounded, color: Colors.grey.shade500, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: TextField(
+                                onChanged: (val) => setModalState(() => searchQuery = val),
+                                style: const TextStyle(fontSize: 14),
+                                decoration: InputDecoration(
+                                  hintText: 'Search $title...',
+                                  hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                                ),
+                              ),
+                            ),
+                            if (searchQuery.isNotEmpty)
+                              GestureDetector(
+                                onTap: () => setModalState(() => searchQuery = ""),
+                                child: Icon(Icons.clear_rounded, color: Colors.grey.shade500, size: 18),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: filteredItems.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.search_off_rounded, size: 48, color: Colors.grey.shade300),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'No $title found',
+                                    style: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              itemCount: filteredItems.length,
+                              itemBuilder: (context, idx) {
+                                final item = filteredItems[idx];
+                                final isSelected = item == selectedValue;
+                                return ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  title: Text(
+                                    item,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                      color: isSelected ? primaryGreen : Colors.black87,
+                                    ),
+                                  ),
+                                  trailing: isSelected
+                                      ? const Icon(Icons.check_rounded, color: primaryGreen, size: 20)
+                                      : null,
+                                  onTap: () {
+                                    onSelected(item);
+                                    Navigator.pop(context);
+                                  },
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 }
 
 // =====================================================================
@@ -765,7 +1207,7 @@ class _OtpVerificationSheetState extends State<_OtpVerificationSheet> {
           ),
           const SizedBox(height: 8),
           Text(
-            'We have sent a $_otpLength-digit code to your phone number:\n${widget.phoneNumber}\n(Use code "8888" to bypass if SMS doesn\'t arrive)',
+            'We have sent a $_otpLength-digit code to your phone number:\n${widget.phoneNumber}',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13,
@@ -776,7 +1218,6 @@ class _OtpVerificationSheetState extends State<_OtpVerificationSheet> {
 
           const SizedBox(height: 24),
 
-          // OTP box inputs — count is driven by _otpLength everywhere.
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: List.generate(_otpLength, (index) {

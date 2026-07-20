@@ -21,6 +21,11 @@ class RegisterProvider with ChangeNotifier {
   String _phone = '';
   String _password = '';
 
+  String? _selectedState;
+  String? _selectedDistrict;
+  String? _selectedLocalBody;
+  String? _selectedWard;
+
   bool _termsAccepted = false;
   bool _isLoading = false;
   String? _errorMessage;
@@ -38,6 +43,10 @@ class RegisterProvider with ChangeNotifier {
   String get email => _email;
   String get phone => _phone;
   String get password => _password;
+  String? get selectedState => _selectedState;
+  String? get selectedDistrict => _selectedDistrict;
+  String? get selectedLocalBody => _selectedLocalBody;
+  String? get selectedWard => _selectedWard;
   bool get termsAccepted => _termsAccepted;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -54,6 +63,8 @@ class RegisterProvider with ChangeNotifier {
       _email.isNotEmpty &&
       _phone.isNotEmpty &&
       _password.isNotEmpty &&
+      _selectedDistrict != null &&
+      _selectedLocalBody != null &&
       _termsAccepted;
 
   // Setters (trims whitespace defensively)
@@ -84,6 +95,32 @@ class RegisterProvider with ChangeNotifier {
 
   void setPassword(String value) {
     _password = value;
+    notifyListeners();
+  }
+
+  void setSelectedState(String? val) {
+    _selectedState = val;
+    _selectedDistrict = null;
+    _selectedLocalBody = null;
+    _selectedWard = null;
+    notifyListeners();
+  }
+
+  void setSelectedDistrict(String? val) {
+    _selectedDistrict = val;
+    _selectedLocalBody = null;
+    _selectedWard = null;
+    notifyListeners();
+  }
+
+  void setSelectedLocalBody(String? val) {
+    _selectedLocalBody = val;
+    _selectedWard = null;
+    notifyListeners();
+  }
+
+  void setSelectedWard(String? val) {
+    _selectedWard = val;
     notifyListeners();
   }
 
@@ -197,6 +234,18 @@ class RegisterProvider with ChangeNotifier {
         await SecureStorageService.saveDisplayName(
           '$_firstName $_lastName'.trim(),
         );
+      }
+      if (_selectedState != null) {
+        await SecureStorageService.saveRegisteredState(_selectedState!);
+      }
+      if (_selectedDistrict != null) {
+        await SecureStorageService.saveRegisteredDistrict(_selectedDistrict!);
+      }
+      if (_selectedLocalBody != null) {
+        await SecureStorageService.saveRegisteredLocalBody(_selectedLocalBody!);
+      }
+      if (_selectedWard != null) {
+        await SecureStorageService.saveRegisteredWard(_selectedWard!);
       }
 
       notifyListeners();

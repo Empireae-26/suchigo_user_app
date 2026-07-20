@@ -628,7 +628,7 @@ class _AdBanner extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(25),
           image: const DecorationImage(
-            image: AssetImage('assets/images/banner_logo.png'),
+            image: AssetImage('assets/images/advt 01.jpg.jpeg'),
             fit: BoxFit.cover,
             alignment: Alignment.center,
           ),

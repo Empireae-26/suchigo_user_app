@@ -5,8 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:suchigo_app/providers/home_provider.dart';
 import 'package:suchigo_app/screens/home_screen.dart';
-import 'package:provider/provider.dart';
-import 'package:suchigo_app/providers/home_provider.dart';
+import 'package:suchigo_app/services/secure_storage_service.dart';
 
 // ─────────────────────────────────────────────
 //  DATA MODEL
@@ -132,6 +131,9 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen>
 
   int _currentNavIndex = 0;
 
+  String? _registeredLocalBody;
+  double _ratePerKg = 40.0;
+
   @override
   void initState() {
     super.initState();
@@ -164,6 +166,12 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen>
     _checkController.forward();
     Future.delayed(const Duration(milliseconds: 400), () {
       if (mounted) _cardController.forward();
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadLocationAndShowPopup();
+      }
     });
   }
 
@@ -516,6 +524,189 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen>
           BottomNavigationBarItem(icon: Icon(Icons.receipt_long_outlined), label: 'Bill'),
           BottomNavigationBarItem(icon: Icon(Icons.settings_outlined), label: 'Settings'),
           BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded), label: 'Profile'),
+        ],
+      ),
+    );
+  }
+
+  double _getLocalBodyRate(String? name) {
+    if (name == null || name.isEmpty) return 40.0;
+    final lower = name.toLowerCase();
+    if (lower.contains('corporation')) {
+      return 20.0;
+    } else if (lower.contains('municipality')) {
+      return 15.0;
+    } else {
+      return 10.0; // default for panchayats
+    }
+  }
+
+  Future<void> _loadLocationAndShowPopup() async {
+    final name = await SecureStorageService.getRegisteredLocalBody();
+    if (mounted) {
+      setState(() {
+        _registeredLocalBody = name;
+        _ratePerKg = _getLocalBodyRate(name);
+      });
+      _showSuccessPopupDialog();
+    }
+  }
+
+  void _showSuccessPopupDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.topCenter,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(20, 48, 20, 24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Booking Confirmed! 🎉',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF2E7D32),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildPopupDetailRow('Rate', '₹${_ratePerKg.toStringAsFixed(0)} / kg'),
+                        _buildPopupDetailRow('Packing', 'Please ensure your waste is neatly packed and securely tied.'),
+                        _buildPopupDetailRow('Handover', 'Our professional team will collect it right from your doorstep.'),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(height: 1, thickness: 1),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Thank you for keeping your surroundings clean with Suchigo! Your Pickup is Scheduled. 🚚',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF2E7D32),
+                        fontWeight: FontWeight.bold,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Please keep your waste neatly covered and secured. Our trained staff will arrive at your doorstep for a hassle-free collection.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Standard Rate: ₹${_ratePerKg.toStringAsFixed(0)}/kg',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF2E7D32),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey.shade600,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: const Text(
+                          'Close',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Positioned(
+                top: -30,
+                child: Container(
+                  width: 60,
+                  height: 60,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF2E7D32),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_rounded,
+                    color: Colors.white,
+                    size: 36,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPopupDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '•  ',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF2E7D32),
+            ),
+          ),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: const TextStyle(fontSize: 13, color: Colors.black87, height: 1.3),
+                children: [
+                  TextSpan(
+                    text: '$label: ',
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+                  ),
+                  TextSpan(text: value),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );

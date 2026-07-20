@@ -7,6 +7,7 @@ import 'package:suchigo_app/screens/account_screen.dart';
 import 'package:suchigo_app/screens/contact_us_screen.dart';
 import 'package:suchigo_app/screens/rewards_screen.dart';
 import 'package:suchigo_app/screens/wallet_screen.dart';
+import 'package:suchigo_app/screens/bills_received_screen.dart';
 
 import 'package:suchigo_app/providers/profile_provider.dart';
 
@@ -51,6 +52,12 @@ class ProfileScreen extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const OrderHistoryScreen()),
+        );
+        break;
+      case "Bills Received":
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const BillsReceivedScreen()),
         );
         break;
       case "Account":
@@ -273,6 +280,11 @@ class ProfileScreen extends StatelessWidget {
                           context,
                           Icons.history_outlined,
                           "Order History",
+                        ),
+                        _buildProfileItem(
+                          context,
+                          Icons.receipt_long_outlined,
+                          "Bills Received",
                         ),
                         _buildProfileItem(
                           context,

@@ -595,8 +595,10 @@ class _OrderCard extends StatelessWidget {
               children: [
                 _InfoRow(icon: Icons.calendar_today_rounded, text: order.date),
                 const SizedBox(height: 8),
-                _InfoRow(icon: Icons.access_time_rounded, text: order.timeSlot),
-                const SizedBox(height: 8),
+                if (order.timeSlot != 'N/A' && order.timeSlot.isNotEmpty) ...[
+                  _InfoRow(icon: Icons.access_time_rounded, text: order.timeSlot),
+                  const SizedBox(height: 8),
+                ],
                 _InfoRow(icon: Icons.location_on_outlined, text: order.address),
                 const SizedBox(height: 8),
                 _InfoRow(

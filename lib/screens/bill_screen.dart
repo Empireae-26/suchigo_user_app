@@ -42,28 +42,28 @@ class _BillScreenState extends State<BillScreen> {
 
   final List<_WasteCategory> _commercialCategories = const [
     _WasteCategory(
-      icon: Icons.business_center_outlined,
-      title: 'INDUSTRIAL WASTE',
-      subtitle: 'Factory Scraps,\nMachinery Parts, Oil',
-      value: 5,
+      icon: Icons.baby_changing_station_outlined,
+      title: 'SANITARY WASTE',
+      subtitle: 'Diaper, Sanitary Pad,\nExpired Medicine, Hair Waste',
+      value: 1,
     ),
     _WasteCategory(
-      icon: Icons.local_shipping_outlined,
-      title: 'BULK WASTE',
-      subtitle: 'Large Volumes, Pallets,\nCommercial Packaging',
-      value: 6,
+      icon: Icons.delete_outline_rounded,
+      title: 'SOLID WASTE',
+      subtitle: 'Paper, Plastic, Metals,\nE-Waste, Glass, Wood',
+      value: 2,
     ),
     _WasteCategory(
-      icon: Icons.science_outlined,
-      title: 'CHEMICAL WASTE',
-      subtitle: 'Hazardous Liquids,\nSafety Disposal Needed',
-      value: 7,
+      icon: Icons.eco_outlined,
+      title: 'ORGANIC WASTE',
+      subtitle: 'Food Scraps, Garden\nWaste, Compostables',
+      value: 3,
     ),
     _WasteCategory(
-      icon: Icons.construction_outlined,
-      title: 'CONSTRUCTION WASTE',
-      subtitle: 'Debris, Cement, Tiles,\nMetal Rods, Wood',
-      value: 8,
+      icon: Icons.devices_other_outlined,
+      title: 'E-WASTE',
+      subtitle: 'Electronics, Batteries,\nCables, Old Devices',
+      value: 4,
     ),
   ];
 
@@ -225,6 +225,7 @@ class _BillScreenState extends State<BillScreen> {
                                 return _WasteCategoryCard(
                                   category: cat,
                                   isSelected: isSelected,
+                                  isCommercial: _selectedTab == 1,
                                   onTap: () =>
                                       billProvider.toggleOption(cat.value),
                                 );
@@ -497,17 +498,19 @@ class _TabButton extends StatelessWidget {
 class _WasteCategoryCard extends StatelessWidget {
   final _WasteCategory category;
   final bool isSelected;
+  final bool isCommercial;
   final VoidCallback onTap;
 
   const _WasteCategoryCard({
     required this.category,
     required this.isSelected,
+    required this.isCommercial,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isClickable = category.value == 1;
+    final isClickable = !isCommercial && category.value == 1;
     return GestureDetector(
       onTap: isClickable ? onTap : null,
       child: Opacity(

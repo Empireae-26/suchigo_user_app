@@ -9,6 +9,7 @@ import 'package:suchigo_app/screens/profile_screen.dart';
 import 'package:suchigo_app/screens/login_screen.dart';
 import 'package:suchigo_app/screens/notification_preferences.dart';
 import 'package:suchigo_app/services/pickup_api_service.dart';
+import 'package:suchigo_app/services/secure_storage_service.dart';
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
@@ -50,6 +51,27 @@ class _AccountScreenState extends State<AccountScreen> {
     _emailController = TextEditingController(text: profileProvider.email);
     _phoneController = TextEditingController(text: profileProvider.phoneNumber);
     _loadStats();
+    _loadAddressDetails();
+  }
+
+  Future<void> _loadAddressDetails() async {
+    final address = await SecureStorageService.getBookingAddress();
+    final city = await SecureStorageService.getBookingCity();
+    final pincode = await SecureStorageService.getBookingPincode();
+
+    if (mounted) {
+      setState(() {
+        if (address != null && address.isNotEmpty) {
+          _addressController.text = address;
+        }
+        if (city != null && city.isNotEmpty) {
+          _cityController.text = city;
+        }
+        if (pincode != null && pincode.isNotEmpty) {
+          _pincodeController.text = pincode;
+        }
+      });
+    }
   }
 
   Future<void> _loadStats() async {
@@ -210,7 +232,14 @@ class _AccountScreenState extends State<AccountScreen> {
                   _SectionHeader(
                     title: 'Personal Information',
                     trailing: GestureDetector(
-                      onTap: () => setState(() => _editMode = !_editMode),
+                      onTap: () async {
+                        if (_editMode) {
+                          await SecureStorageService.saveBookingAddress(_addressController.text.trim());
+                          await SecureStorageService.saveBookingCity(_cityController.text.trim());
+                          await SecureStorageService.saveBookingPincode(_pincodeController.text.trim());
+                        }
+                        setState(() => _editMode = !_editMode);
+                      },
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,

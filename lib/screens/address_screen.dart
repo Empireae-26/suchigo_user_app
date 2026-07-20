@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:provider/provider.dart';
+import 'package:suchigo_app/models/location_models.dart';
 import 'package:suchigo_app/providers/home_provider.dart';
 import 'package:suchigo_app/providers/profile_provider.dart';
 import 'package:suchigo_app/providers/bill_provider.dart';
@@ -10,6 +11,9 @@ import 'package:suchigo_app/screens/booking_confirmation_screen.dart';
 import 'package:suchigo_app/services/address_api_service.dart';
 import 'package:suchigo_app/services/pickup_api_service.dart';
 import 'package:suchigo_app/services/notification_service.dart';
+import 'package:suchigo_app/services/location_api_service.dart';
+import 'package:suchigo_app/services/secure_storage_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'home_screen.dart';
 
 class AddressScreen extends StatefulWidget {
@@ -29,7 +33,6 @@ class _AddressScreenState extends State<AddressScreen> {
   final _addressController = TextEditingController(); // street / house info
   final _secondaryController = TextEditingController();
   final _landmarkController = TextEditingController();
-  final _cityController = TextEditingController();
   final _zipController = TextEditingController();
   final _bagsController = TextEditingController(text: '1');
 
@@ -37,7 +40,6 @@ class _AddressScreenState extends State<AddressScreen> {
   String? _selectedState;
   String? _selectedLocalBody;
   String? _selectedWard;
-  String? _selectedTimeSlot;
   DateTime? _selectedDate;
 
   bool _isSubmitting = false;
@@ -47,15 +49,20 @@ class _AddressScreenState extends State<AddressScreen> {
   static const Color _darkGreen = Color(0xFF1E713D);
   static const Color _headerGreen = Color(0xFF4CAF50);
 
-  final List<String> _districts = ['Ernakulam', 'Thrissur'];
-  final List<String> _state = ['Kerala', 'Tamilnadu'];
+  List<LocationState> _apiStates = [];
+  List<LocationDistrict> _apiDistricts = [];
+  List<LocationLocalBody> _apiLocalBodies = [];
+  List<LocationWard> _apiWards = [];
 
-  final List<String> _localBodies = [
-    'Kochi Corporation',
-    'Thrissur Corporation',
-  ];
+  bool _isLoadingStates = false;
+  bool _isLoadingDistricts = false;
+  bool _isLoadingLocalBodies = false;
+  bool _isLoadingWards = false;
 
-  final List<String> _wards = List.generate(20, (i) => 'Ward ${i + 1}');
+  List<String> get _state => _apiStates.map((s) => s.name).toList();
+  List<String> get _districts => _apiDistricts.map((d) => d.name).toList();
+  List<String> get _localBodies => _apiLocalBodies.map((l) => l.name).toList();
+  List<String> get _wards => _apiWards.map((w) => w.wardName).toList();
 
   final List<Map<String, dynamic>> _timeSlots = const [
     {'label': '9:00 AM – 12:00 PM', 'hour': 9},
@@ -66,6 +73,7 @@ class _AddressScreenState extends State<AddressScreen> {
   @override
   void initState() {
     super.initState();
+    _loadStates();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
@@ -80,8 +88,245 @@ class _AddressScreenState extends State<AddressScreen> {
         if (profileProvider.email.isNotEmpty) {
           _emailController.text = profileProvider.email;
         }
+        _loadCachedAddressDetails();
       }
     });
+  }
+
+  Future<void> _loadCachedAddressDetails() async {
+    final address = await SecureStorageService.getBookingAddress();
+    final pincode = await SecureStorageService.getBookingPincode();
+
+    if (!mounted) return;
+    setState(() {
+      if (address != null && address.isNotEmpty) {
+        _addressController.text = address;
+      }
+      if (pincode != null && pincode.isNotEmpty) {
+        _zipController.text = pincode;
+      }
+    });
+  }
+
+  Future<void> _loadStates() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingStates = true;
+      _submitError = null;
+    });
+    try {
+      final states = await LocationApiService.fetchStates();
+      if (!mounted) return;
+      setState(() {
+        _apiStates = states;
+      });
+      await _loadRegisteredLocation();
+      if (_selectedState == null && _apiStates.length == 1) {
+        setState(() {
+          _selectedState = _apiStates[0].name;
+        });
+        await _loadDistricts(_apiStates[0].id);
+      }
+    } catch (e) {
+      debugPrint('[AddressScreen] Error loading states: $e');
+      if (mounted) {
+        setState(() {
+          _submitError = 'Failed to load states. Please try again.';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingStates = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadRegisteredLocation() async {
+    final regState = await SecureStorageService.getRegisteredState();
+    final regDistrict = await SecureStorageService.getRegisteredDistrict();
+    final regLocalBody = await SecureStorageService.getRegisteredLocalBody();
+    final regWard = await SecureStorageService.getRegisteredWard();
+
+    if (!mounted) return;
+
+    if (regState != null && regState.isNotEmpty) {
+      final stateObj = _apiStates.firstWhere(
+        (s) => s.name.toLowerCase() == regState.toLowerCase(),
+        orElse: () => LocationState(id: -1, name: ''),
+      );
+      if (stateObj.id != -1) {
+        setState(() {
+          _selectedState = stateObj.name;
+        });
+        
+        final districts = await LocationApiService.fetchDistricts(stateObj.id);
+        if (!mounted) return;
+        setState(() {
+          _apiDistricts = districts;
+        });
+
+        if (regDistrict != null && regDistrict.isNotEmpty) {
+          final districtObj = _apiDistricts.firstWhere(
+            (d) => d.name.toLowerCase() == regDistrict.toLowerCase(),
+            orElse: () => LocationDistrict(id: -1, name: '', stateId: -1),
+          );
+          if (districtObj.id != -1) {
+            setState(() {
+              _selectedDistrict = districtObj.name;
+            });
+
+            final localBodies = await LocationApiService.fetchLocalBodies(districtObj.id);
+            if (!mounted) return;
+            setState(() {
+              _apiLocalBodies = localBodies;
+            });
+
+            if (regLocalBody != null && regLocalBody.isNotEmpty) {
+              final localBodyObj = _apiLocalBodies.firstWhere(
+                (l) => l.name.toLowerCase() == regLocalBody.toLowerCase(),
+                orElse: () => LocationLocalBody(id: -1, name: '', localBodyType: '', districtId: -1),
+              );
+              if (localBodyObj.id != -1) {
+                setState(() {
+                  _selectedLocalBody = localBodyObj.name;
+                });
+
+                final wards = await LocationApiService.fetchWards(localBodyObj.id);
+                if (!mounted) return;
+                setState(() {
+                  _apiWards = wards;
+                });
+
+                if (regWard != null && regWard.isNotEmpty) {
+                  final wardObj = _apiWards.firstWhere(
+                    (w) => w.wardName.toLowerCase() == regWard.toLowerCase(),
+                    orElse: () => LocationWard(id: -1, wardNumber: -1, wardName: '', localBodyId: -1),
+                  );
+                  if (wardObj.id != -1) {
+                    setState(() {
+                      _selectedWard = wardObj.wardName;
+                    });
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  Future<void> _loadDistricts(int stateId) async {
+    setState(() {
+      _isLoadingDistricts = true;
+      _submitError = null;
+    });
+    try {
+      final districts = await LocationApiService.fetchDistricts(stateId);
+      setState(() {
+        _apiDistricts = districts;
+      });
+    } catch (e) {
+      debugPrint('[AddressScreen] Error loading districts: $e');
+      setState(() {
+        _submitError = 'Failed to load districts. Please try again.';
+      });
+    } finally {
+      setState(() {
+        _isLoadingDistricts = false;
+      });
+    }
+  }
+
+  Future<void> _loadLocalBodies(int districtId) async {
+    setState(() {
+      _isLoadingLocalBodies = true;
+      _submitError = null;
+    });
+    try {
+      final localBodies = await LocationApiService.fetchLocalBodies(districtId);
+      setState(() {
+        _apiLocalBodies = localBodies;
+      });
+    } catch (e) {
+      debugPrint('[AddressScreen] Error loading local bodies: $e');
+      setState(() {
+        _submitError = 'Failed to load local bodies. Please try again.';
+      });
+    } finally {
+      setState(() {
+        _isLoadingLocalBodies = false;
+      });
+    }
+  }
+
+  Future<void> _loadWards(int localBodyId) async {
+    setState(() {
+      _isLoadingWards = true;
+      _submitError = null;
+    });
+    try {
+      final wards = await LocationApiService.fetchWards(localBodyId);
+      setState(() {
+        _apiWards = wards;
+      });
+    } catch (e) {
+      debugPrint('[AddressScreen] Error loading wards: $e');
+      setState(() {
+        _submitError = 'Failed to load wards. Please try again.';
+      });
+    } finally {
+      setState(() {
+        _isLoadingWards = false;
+      });
+    }
+  }
+
+  void _onStateChanged(String? name) {
+    if (_selectedState == name) return;
+    setState(() {
+      _selectedState = name;
+      _selectedDistrict = null;
+      _selectedLocalBody = null;
+      _selectedWard = null;
+      _apiDistricts = [];
+      _apiLocalBodies = [];
+      _apiWards = [];
+    });
+    if (name != null) {
+      final stateObj = _apiStates.firstWhere((s) => s.name == name);
+      _loadDistricts(stateObj.id);
+    }
+  }
+
+  void _onDistrictChanged(String? name) {
+    if (_selectedDistrict == name) return;
+    setState(() {
+      _selectedDistrict = name;
+      _selectedLocalBody = null;
+      _selectedWard = null;
+      _apiLocalBodies = [];
+      _apiWards = [];
+    });
+    if (name != null) {
+      final districtObj = _apiDistricts.firstWhere((d) => d.name == name);
+      _loadLocalBodies(districtObj.id);
+    }
+  }
+
+  void _onLocalBodyChanged(String? name) {
+    if (_selectedLocalBody == name) return;
+    setState(() {
+      _selectedLocalBody = name;
+      _selectedWard = null;
+      _apiWards = [];
+    });
+    if (name != null) {
+      final localBodyObj = _apiLocalBodies.firstWhere((l) => l.name == name);
+      _loadWards(localBodyObj.id);
+    }
   }
 
   @override
@@ -93,7 +338,6 @@ class _AddressScreenState extends State<AddressScreen> {
     _addressController.dispose();
     _secondaryController.dispose();
     _landmarkController.dispose();
-    _cityController.dispose();
     _zipController.dispose();
     _bagsController.dispose();
     _scrollController.dispose();
@@ -102,11 +346,7 @@ class _AddressScreenState extends State<AddressScreen> {
 
   String _buildScheduledDateIso() {
     final date = _selectedDate!;
-    final hour =
-        _timeSlots.firstWhere(
-              (slot) => slot['label'] == _selectedTimeSlot,
-            )['hour']
-            as int;
+    const hour = 9;
 
     final utcDateTime = DateTime.utc(
       date.year,
@@ -152,12 +392,10 @@ class _AddressScreenState extends State<AddressScreen> {
     if (_contactController.text.trim().isEmpty) missing.add('Contact Number');
     if (_emailController.text.trim().isEmpty) missing.add('Email Address');
     if (_addressController.text.trim().isEmpty) missing.add('Pickup Address');
-    if (_cityController.text.trim().isEmpty) missing.add('City');
     if (_zipController.text.trim().isEmpty) missing.add('Zip / Postal Code');
     if (_pickupDateController.text.trim().isEmpty || _selectedDate == null) {
       missing.add('Pickup Date');
     }
-    if (_selectedTimeSlot == null) missing.add('Pickup Time Slot');
     if (_selectedState == null) missing.add('State');
     if (_selectedDistrict == null) missing.add('District');
     if (_selectedLocalBody == null) missing.add('Local Body');
@@ -204,14 +442,14 @@ class _AddressScreenState extends State<AddressScreen> {
         email: _emailController.text.trim(),
         contactNumber: _contactController.text.trim(),
         street: _addressController.text.trim(),
-        city: _cityController.text.trim(),
+        city: _selectedDistrict ?? '',
         zipCode: _zipController.text.trim(),
         state: _selectedState ?? '',
         district: _selectedDistrict ?? '',
         localBody: _selectedLocalBody ?? '',
         wardName: _selectedWard ?? '',
         pickupDate: dateStr,
-        pickupTimeSlot: _selectedTimeSlot ?? '',
+        pickupTimeSlot: '9:00 AM – 12:00 PM',
         itemsDescription: _secondaryController.text.trim().isNotEmpty
             ? _secondaryController.text.trim()
             : 'General household waste',
@@ -221,9 +459,29 @@ class _AddressScreenState extends State<AddressScreen> {
             : null,
       );
 
+      try {
+        await SecureStorageService.saveBookingAddress(_addressController.text.trim());
+        await SecureStorageService.saveBookingCity(_selectedDistrict ?? '');
+        await SecureStorageService.saveBookingPincode(_zipController.text.trim());
+        if (_selectedState != null) {
+          await SecureStorageService.saveRegisteredState(_selectedState!);
+        }
+        if (_selectedDistrict != null) {
+          await SecureStorageService.saveRegisteredDistrict(_selectedDistrict!);
+        }
+        if (_selectedLocalBody != null) {
+          await SecureStorageService.saveRegisteredLocalBody(_selectedLocalBody!);
+        }
+        if (_selectedWard != null) {
+          await SecureStorageService.saveRegisteredWard(_selectedWard!);
+        }
+      } catch (e) {
+        debugPrint('[AddressScreen] Failed to cache booking address details: $e');
+      }
+
       final addressResponse = <String, dynamic>{
         'street': _addressController.text.trim(),
-        'city': _cityController.text.trim(),
+        'city': _selectedDistrict ?? '',
         'zip_code': _zipController.text.trim(),
         'number_of_bags': int.tryParse(_bagsController.text.trim()) ?? 1,
       };
@@ -239,6 +497,19 @@ class _AddressScreenState extends State<AddressScreen> {
           debugPrint('[AddressScreen] Failed to schedule notification reminders: $e');
         }
       }
+
+      if (pickupId > 0) {
+        try {
+          await NotificationService.instance.showBookingConfirmedNotification(
+            pickupId: pickupId,
+            wasteType: wasteTypeVal,
+            date: dateStr,
+          );
+        } catch (e) {
+          debugPrint('[AddressScreen] Failed to show instant booking notification: $e');
+        }
+      }
+
 
       if (!mounted) return;
 
@@ -260,7 +531,7 @@ class _AddressScreenState extends State<AddressScreen> {
             bookingDetails: BookingDetails.fromApiResponses(
               pickupJson: pickupResponse,
               addressJson: addressResponse,
-              selectedTimeSlotLabel: _selectedTimeSlot!,
+              selectedTimeSlotLabel: '9:00 AM – 12:00 PM',
               fallbackContactName: _nameController.text.trim(),
               fallbackContactPhone: _contactController.text.trim(),
             ),
@@ -276,15 +547,20 @@ class _AddressScreenState extends State<AddressScreen> {
     }
   }
 
+  String? _encodeQueryParameters(Map<String, String> params) {
+    return params.entries
+        .map((MapEntry<String, String> e) =>
+            '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+        .join('&');
+  }
+
   void _previewConfirmationScreenWithMockData() {
     final mockAddressResponse = <String, dynamic>{
       'id': 1,
       'street': _addressController.text.trim().isNotEmpty
           ? _addressController.text.trim()
           : '456 Main Road',
-      'city': _cityController.text.trim().isNotEmpty
-          ? _cityController.text.trim()
-          : 'Kochi',
+      'city': _selectedDistrict ?? 'Kochi',
       'state': (_selectedState ?? 'kerala').toLowerCase(),
       'district': (_selectedDistrict ?? 'ernakulam').toLowerCase(),
       'zip_code': _zipController.text.trim().isNotEmpty
@@ -329,7 +605,7 @@ class _AddressScreenState extends State<AddressScreen> {
           bookingDetails: BookingDetails.fromApiResponses(
             pickupJson: mockPickupResponse,
             addressJson: mockAddressResponse,
-            selectedTimeSlotLabel: _selectedTimeSlot ?? '9:00 AM – 12:00 PM',
+            selectedTimeSlotLabel: '9:00 AM – 12:00 PM',
             fallbackContactName: _nameController.text.trim().isNotEmpty
                 ? _nameController.text.trim()
                 : 'Preview Customer',
@@ -436,6 +712,7 @@ class _AddressScreenState extends State<AddressScreen> {
     required String? value,
     required ValueChanged<String?> onChanged,
     bool required = true,
+    bool enabled = true,
   }) {
     return FormField<String>(
       initialValue: value,
@@ -474,20 +751,22 @@ class _AddressScreenState extends State<AddressScreen> {
               ),
               const SizedBox(height: 8),
               InkWell(
-                onTap: () => _showSelectionBottomSheet(
-                  title: label,
-                  items: items,
-                  selectedValue: value,
-                  onSelected: (val) {
-                    onChanged(val);
-                    state.didChange(val);
-                  },
-                ),
+                onTap: enabled
+                    ? () => _showSelectionBottomSheet(
+                          title: label,
+                          items: items,
+                          selectedValue: value,
+                          onSelected: (val) {
+                            onChanged(val);
+                            state.didChange(val);
+                          },
+                        )
+                    : null,
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF9FBF9),
+                    color: enabled ? const Color(0xFFF9FBF9) : Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: hasError
@@ -512,7 +791,9 @@ class _AddressScreenState extends State<AddressScreen> {
                           value ?? hint,
                           style: TextStyle(
                             fontSize: 14,
-                            color: value != null ? Colors.black87 : Colors.grey.shade400,
+                            color: enabled
+                                ? (value != null ? Colors.black87 : Colors.grey.shade400)
+                                : Colors.grey.shade500,
                             fontWeight: value != null ? FontWeight.w500 : FontWeight.normal,
                           ),
                         ),
@@ -521,7 +802,7 @@ class _AddressScreenState extends State<AddressScreen> {
                         Icons.keyboard_arrow_down_rounded,
                         color: hasError
                             ? Colors.red
-                            : (value != null ? _headerGreen : Colors.grey.shade600),
+                            : (value != null ? _headerGreen : (enabled ? Colors.grey.shade600 : Colors.grey.shade300)),
                         size: 22,
                       ),
                     ],
@@ -929,44 +1210,44 @@ class _AddressScreenState extends State<AddressScreen> {
                             hint: 'Enter your complete address',
                             maxLines: 3,
                           ),
-                          _buildField(
-                            controller: _cityController,
-                            label: 'City',
-                            hint: 'Enter your city name',
-                          ),
                           _buildDropdown(
                             label: 'State',
-                            hint: 'Select state',
+                            hint: _isLoadingStates ? 'Loading states...' : 'Select state',
                             items: _state,
                             value: _selectedState,
-                            onChanged: (v) =>
-                                setState(() => _selectedState = v),
+                            onChanged: _onStateChanged,
+                            enabled: !_isLoadingStates,
                           ),
                           _buildDropdown(
                             label: 'District',
-                            hint: 'Select district',
+                            hint: _isLoadingDistricts
+                                ? 'Loading districts...'
+                                : (_selectedState == null ? 'Select state first' : 'Select district'),
                             items: _districts,
                             value: _selectedDistrict,
-                            onChanged: (v) => setState(() {
-                              _selectedDistrict = v;
-                              _selectedLocalBody = null;
-                            }),
+                            onChanged: _onDistrictChanged,
+                            enabled: _selectedState != null && !_isLoadingDistricts,
                           ),
                           _buildDropdown(
                             label: 'Local Body',
-                            hint: 'Select local body',
+                            hint: _isLoadingLocalBodies
+                                ? 'Loading local bodies...'
+                                : (_selectedDistrict == null ? 'Select district first' : 'Select local body'),
                             items: _localBodies,
                             value: _selectedLocalBody,
-                            onChanged: (v) =>
-                                setState(() => _selectedLocalBody = v),
+                            onChanged: _onLocalBodyChanged,
+                            enabled: _selectedDistrict != null && !_isLoadingLocalBodies,
                           ),
                           _buildDropdown(
                             label: 'Ward Name & Number',
-                            hint: 'Select ward (optional)',
+                            hint: _isLoadingWards
+                                ? 'Loading wards...'
+                                : (_selectedLocalBody == null ? 'Select local body first' : 'Select ward (optional)'),
                             items: _wards,
                             value: _selectedWard,
                             onChanged: (v) => setState(() => _selectedWard = v),
                             required: false,
+                            enabled: _selectedLocalBody != null && !_isLoadingWards,
                           ),
                           _buildField(
                             controller: _zipController,
@@ -992,16 +1273,6 @@ class _AddressScreenState extends State<AddressScreen> {
                             hint: 'Tap to select pickup date',
                             readOnly: true,
                             onTap: _selectPickupDate,
-                          ),
-                          _buildDropdown(
-                            label: 'Pickup Time Slot',
-                            hint: 'Select time slot',
-                            items: _timeSlots
-                                .map((e) => e['label'] as String)
-                                .toList(),
-                            value: _selectedTimeSlot,
-                            onChanged: (v) =>
-                                setState(() => _selectedTimeSlot = v),
                           ),
                           _buildField(
                             controller: _bagsController,
@@ -1103,6 +1374,18 @@ class _AddressScreenState extends State<AddressScreen> {
     );
   }
 
+  double _getLocalBodyRate(String? name) {
+    if (name == null || name.isEmpty) return 0.0;
+    final lower = name.toLowerCase();
+    if (lower.contains('corporation')) {
+      return 20.0;
+    } else if (lower.contains('municipality')) {
+      return 15.0;
+    } else {
+      return 10.0; // default for panchayats
+    }
+  }
+
   Widget _buildHeader() {
     return Container(
       decoration: const BoxDecoration(
@@ -1163,12 +1446,12 @@ class _AddressScreenState extends State<AddressScreen> {
                 ],
               ),
               const SizedBox(height: 20),
-              // Welcome card
+              // Local Body, Ward, and Rate Info Card
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 20,
-                  vertical: 16,
+                  vertical: 18,
                 ),
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -1182,24 +1465,98 @@ class _AddressScreenState extends State<AddressScreen> {
                   ],
                 ),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Welcome back, ${Provider.of<ProfileProvider>(context).username}! 👋',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                        color: Colors.black87,
-                      ),
+                    Row(
+                      children: [
+                        Icon(Icons.location_city_rounded, color: _darkGreen, size: 24),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Local Body',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade500,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Text(
+                                _selectedLocalBody ?? 'Not Selected',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: _selectedLocalBody != null ? Colors.black87 : Colors.grey.shade400,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Manage your waste collection and track your\nenvironmental impact',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                        height: 1.5,
-                      ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Icon(Icons.door_sliding_rounded, color: _darkGreen, size: 24),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Ward Name & Number',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade500,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Text(
+                                _selectedWard ?? 'Not Selected',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: _selectedWard != null ? Colors.black87 : Colors.grey.shade400,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    const Divider(height: 1, thickness: 1),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.currency_rupee_rounded, color: Colors.amber.shade800, size: 22),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Rate per KG:',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade700,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          _selectedLocalBody != null
+                              ? '₹${_getLocalBodyRate(_selectedLocalBody).toStringAsFixed(2)} / kg'
+                              : '--',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: _selectedLocalBody != null ? _darkGreen : Colors.grey.shade400,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
