@@ -590,15 +590,6 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen>
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildPopupDetailRow('Rate', '₹${_ratePerKg.toStringAsFixed(0)} / kg'),
-                        _buildPopupDetailRow('Packing', 'Please ensure your waste is neatly packed and securely tied.'),
-                        _buildPopupDetailRow('Handover', 'Our professional team will collect it right from your doorstep.'),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
                     const Divider(height: 1, thickness: 1),
                     const SizedBox(height: 16),
                     const Text(

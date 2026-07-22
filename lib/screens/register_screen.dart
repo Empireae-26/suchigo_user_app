@@ -35,7 +35,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailController = TextEditingController();
     _phoneController = TextEditingController();
     _passwordController = TextEditingController();
-    _loadStates();
   }
 
   @override
@@ -175,14 +174,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 14),
                   _buildInput(
-                    hint: 'Email Address',
+                    hint: 'Email Address (Optional)',
                     controller: _emailController,
                     type: TextInputType.emailAddress,
                     icon: Icons.email_outlined,
                   ),
                   const SizedBox(height: 14),
                   _buildInput(
-                    hint: 'Phone (e.g., +919998887776)',
+                    hint: 'Phone (e.g., 9998887776)',
                     controller: _phoneController,
                     type: TextInputType.phone,
                     icon: Icons.phone_outlined,
@@ -194,46 +193,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     type: TextInputType.text,
                     isPassword: true,
                     icon: Icons.lock_outline_rounded,
-                  ),
-                  const SizedBox(height: 14),
-                  _buildDropdown(
-                    label: 'State',
-                    hint: _isLoadingStates ? 'Loading states...' : 'Select state',
-                    items: _state,
-                    value: provider.selectedState,
-                    onChanged: _onStateChanged,
-                    enabled: !_isLoadingStates,
-                  ),
-                  _buildDropdown(
-                    label: 'District',
-                    hint: _isLoadingDistricts
-                        ? 'Loading districts...'
-                        : (provider.selectedState == null ? 'Select state first' : 'Select district'),
-                    items: _districts,
-                    value: provider.selectedDistrict,
-                    onChanged: _onDistrictChanged,
-                    enabled: provider.selectedState != null && !_isLoadingDistricts,
-                  ),
-                  _buildDropdown(
-                    label: 'Local Body',
-                    hint: _isLoadingLocalBodies
-                        ? 'Loading local bodies...'
-                        : (provider.selectedDistrict == null ? 'Select district first' : 'Select local body'),
-                    items: _localBodies,
-                    value: provider.selectedLocalBody,
-                    onChanged: _onLocalBodyChanged,
-                    enabled: provider.selectedDistrict != null && !_isLoadingLocalBodies,
-                  ),
-                  _buildDropdown(
-                    label: 'Ward Name & Number',
-                    hint: _isLoadingWards
-                        ? 'Loading wards...'
-                        : (provider.selectedLocalBody == null ? 'Select local body first' : 'Select ward (optional)'),
-                    items: _wards,
-                    value: provider.selectedWard,
-                    onChanged: (v) => setState(() => provider.setSelectedWard(v)),
-                    required: false,
-                    enabled: provider.selectedLocalBody != null && !_isLoadingWards,
                   ),
                   const SizedBox(height: 20),
 
@@ -470,6 +429,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     required TextInputType type,
     required IconData icon,
     bool isPassword = false,
+    String? prefixText,
   }) {
     const primaryGreen = Color(0xFF1E713D);
 
@@ -483,7 +443,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
         hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
         filled: true,
         fillColor: Colors.grey.shade50,
-        prefixIcon: Icon(icon, color: Colors.grey.shade500, size: 20),
+        prefixIcon: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(width: 12),
+            Icon(icon, color: Colors.grey.shade500, size: 20),
+            if (prefixText != null) ...[
+              const SizedBox(width: 8),
+              Text(
+                prefixText,
+                style: const TextStyle(
+                  color: Colors.black87,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+            const SizedBox(width: 8),
+          ],
+        ),
         suffixIcon: isPassword
             ? IconButton(
                 icon: Icon(

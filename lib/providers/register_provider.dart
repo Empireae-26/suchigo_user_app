@@ -8,11 +8,11 @@ class RegisterProvider with ChangeNotifier {
   // 1. STATE MANAGEMENT
   // -----------------------------------------------------------
   static const String _registerUrl =
-      'https://suchigoapis.pythonanywhere.com/api/register/';
+      'https://suchigoapis.pythonanywhere.com//api/register/';
   static const String _otpSendUrl =
-      'https://suchigoapis.pythonanywhere.com/api/otp/send/';
+      'https://suchigoapis.pythonanywhere.com//api/otp/send/';
   static const String _otpVerifyUrl =
-      'https://suchigoapis.pythonanywhere.com/api/otp/verify/';
+      'https://suchigoapis.pythonanywhere.com//api/otp/verify/';
 
   String _username = '';
   String _firstName = '';
@@ -41,7 +41,13 @@ class RegisterProvider with ChangeNotifier {
   String get firstName => _firstName;
   String get lastName => _lastName;
   String get email => _email;
-  String get phone => _phone;
+  String get phone {
+    String p = _phone.replaceAll(RegExp(r'\s+'), '');
+    if (p.isEmpty) return p;
+    if (p.startsWith('+')) return p;
+    if (p.startsWith('91') && p.length == 12) return '+$p';
+    return '+91$p';
+  }
   String get password => _password;
   String? get selectedState => _selectedState;
   String? get selectedDistrict => _selectedDistrict;
@@ -55,16 +61,12 @@ class RegisterProvider with ChangeNotifier {
   bool get isVerifyingOtp => _isVerifyingOtp;
   String? get otpErrorMessage => _otpErrorMessage;
 
-  // Validation logic remains the same (checks for non-empty)
   bool get isValid =>
       _username.isNotEmpty &&
       _firstName.isNotEmpty &&
       _lastName.isNotEmpty &&
-      _email.isNotEmpty &&
       _phone.isNotEmpty &&
       _password.isNotEmpty &&
-      _selectedDistrict != null &&
-      _selectedLocalBody != null &&
       _termsAccepted;
 
   // Setters (trims whitespace defensively)
@@ -156,22 +158,27 @@ class RegisterProvider with ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
-    // Defensive validation check for phone format (optional but helpful)
-    if (_phone.isNotEmpty && !_phone.startsWith('+')) {
+    // Validation check for phone format (automatic +91 format)
+    final cleanPhone = phone;
+    if (cleanPhone.startsWith('+91') && cleanPhone.length != 13) {
       _isLoading = false;
-      _errorMessage =
-          'Phone number should include the country code, starting with "+".';
+      _errorMessage = 'Please enter a valid 10-digit phone number.';
+      notifyListeners();
+      return false;
+    } else if (cleanPhone.length < 10) {
+      _isLoading = false;
+      _errorMessage = 'Please enter a valid phone number.';
       notifyListeners();
       return false;
     }
 
     final requestBody = jsonEncode(<String, String>{
       'username': _username,
-      'email': _email,
+      'email': _email.trim().isEmpty ? '${cleanPhone.replaceAll('+', '')}@suchigo.com' : _email,
       'password': _password,
       'first_name': _firstName,
       'last_name': _lastName,
-      'phone_number': _phone,
+      'phone_number': cleanPhone,
     });
     print('[http] REQUEST: POST $_registerUrl');
     print(
@@ -228,7 +235,7 @@ class RegisterProvider with ChangeNotifier {
 
       // Cache the registration details locally so they can be retrieved after login
       await SecureStorageService.saveEmail(_email);
-      await SecureStorageService.savePhoneNumber(_phone);
+      await SecureStorageService.savePhoneNumber(phone);
       await SecureStorageService.saveUsername(_username);
       if (_firstName.isNotEmpty || _lastName.isNotEmpty) {
         await SecureStorageService.saveDisplayName(
@@ -280,7 +287,7 @@ class RegisterProvider with ChangeNotifier {
     _otpErrorMessage = null;
     notifyListeners();
 
-    final requestBody = jsonEncode(<String, String>{'phone_number': _phone});
+    final requestBody = jsonEncode(<String, String>{'phone_number': phone});
     print('[http] REQUEST: POST $_otpSendUrl');
     print(
       '[http] REQUEST Headers: {Content-Type: application/json; charset=UTF-8}',
@@ -339,7 +346,7 @@ class RegisterProvider with ChangeNotifier {
     notifyListeners();
 
     final requestBody = jsonEncode(<String, String>{
-      'phone_number': _phone,
+      'phone_number': phone,
       'otp': otp,
     });
     print('[http] REQUEST: POST $_otpVerifyUrl');

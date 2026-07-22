@@ -124,19 +124,29 @@ class _LoginPageState extends State<LoginScreen> {
               const SizedBox(height: 10),
 
               Center(
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 30),
+                child: Container(
+                  width: 190,
+                  height: 190,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.45),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.white.withOpacity(0.6),
+                        blurRadius: 30,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(24),
                   child: Image.asset(
                     'assets/images/login.png',
-                    height: h * 0.35,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    alignment: Alignment.center,
+                    fit: BoxFit.contain,
                   ),
                 ),
               ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 30),
 
               Container(
                 width: double.infinity,

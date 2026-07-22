@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:suchigo_app/screens/home_screen.dart';
-import 'package:suchigo_app/screens/welcome_screen.dart';
+import 'package:suchigo_app/screens/onboarding_screen.dart';
 import 'package:suchigo_app/providers/profile_provider.dart';
 import 'package:suchigo_app/services/secure_storage_service.dart';
 
@@ -23,21 +23,32 @@ class _SplashScreenAuthState extends State<SplashScreenAuth> {
     // Add a slight delay for splash screen visibility
     await Future.delayed(const Duration(seconds: 2));
 
-    final token = await SecureStorageService.getToken();
+    try {
+      final token = await SecureStorageService.getToken();
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (token != null && token.isNotEmpty) {
-      Provider.of<ProfileProvider>(context, listen: false).refresh();
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const WelcomeScreen()),
-      );
+      if (token != null && token.isNotEmpty) {
+        Provider.of<ProfileProvider>(context, listen: false).refresh();
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+        );
+      }
+    } catch (e, stack) {
+      debugPrint("Auth status check failed: $e");
+      debugPrint("$stack");
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+        );
+      }
     }
   }
 

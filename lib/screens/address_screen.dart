@@ -85,7 +85,7 @@ class _AddressScreenState extends State<AddressScreen> {
         if (profileProvider.phoneNumber.isNotEmpty) {
           _contactController.text = profileProvider.phoneNumber;
         }
-        if (profileProvider.email.isNotEmpty) {
+        if (profileProvider.email.isNotEmpty && !profileProvider.email.endsWith('@suchigo.com')) {
           _emailController.text = profileProvider.email;
         }
         _loadCachedAddressDetails();
@@ -390,7 +390,6 @@ class _AddressScreenState extends State<AddressScreen> {
     final missing = <String>[];
     if (_nameController.text.trim().isEmpty) missing.add('Full Name');
     if (_contactController.text.trim().isEmpty) missing.add('Contact Number');
-    if (_emailController.text.trim().isEmpty) missing.add('Email Address');
     if (_addressController.text.trim().isEmpty) missing.add('Pickup Address');
     if (_zipController.text.trim().isEmpty) missing.add('Zip / Postal Code');
     if (_pickupDateController.text.trim().isEmpty || _selectedDate == null) {
@@ -437,9 +436,16 @@ class _AddressScreenState extends State<AddressScreen> {
           ? billProvider.selectedWasteTypes.join(', ')
           : 'Mixed Household Waste';
 
+      final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
+      final emailVal = _emailController.text.trim().isNotEmpty
+          ? _emailController.text.trim()
+          : (profileProvider.email.isNotEmpty
+              ? profileProvider.email
+              : '${_contactController.text.trim().replaceAll('+', '')}@suchigo.com');
+
       final pickupResponse = await PickupApiService.createPickup(
         fullName: _nameController.text.trim(),
-        email: _emailController.text.trim(),
+        email: emailVal,
         contactNumber: _contactController.text.trim(),
         street: _addressController.text.trim(),
         city: _selectedDistrict ?? '',
@@ -966,7 +972,7 @@ class _AddressScreenState extends State<AddressScreen> {
                                     ),
                                     child: Center(
                                       child: Text(
-                                        numberOnly.isNotEmpty ? numberOnly : '#',
+                                        numberOnly.isNotEmpty ? numberOnly : '${index + 1}',
                                         style: TextStyle(
                                           color: isSelected ? Colors.white : _darkGreen,
                                           fontSize: 13,
@@ -1181,12 +1187,12 @@ class _AddressScreenState extends State<AddressScreen> {
                           ),
                           _buildField(
                             controller: _emailController,
-                            label: 'Email Address',
+                            label: 'Email Address (Optional)',
                             hint: 'Enter your email address',
                             keyboard: TextInputType.emailAddress,
                             customValidator: (v) {
                               if (v == null || v.trim().isEmpty)
-                                return 'Required';
+                                return null;
                               final emailRegex = RegExp(
                                 r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
                               );

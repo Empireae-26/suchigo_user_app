@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:suchigo_app/screens/collector_screen.dart';
 import 'package:suchigo_app/screens/login_screen.dart';
+import 'package:suchigo_app/models/order_model.dart';
+import 'package:suchigo_app/providers/profile_provider.dart';
+import 'package:suchigo_app/services/bill_api_service.dart';
 
 class WasteScreen extends StatefulWidget {
-  const WasteScreen({super.key});
+  final OrderModel orderData;
+  const WasteScreen({super.key, required this.orderData});
 
   @override
   State<WasteScreen> createState() => _WasteScreenState();
@@ -341,11 +346,12 @@ class _WasteScreenState extends State<WasteScreen> {
 
   // PAYMENT POPUP
   void openPaymentPopup(BuildContext context) {
+    bool isSubmitting = false;
     showModalBottomSheet(
       isScrollControlled: true,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       context: context,
-      builder: (_) {
+      builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setStatePopup) {
             return Padding(
@@ -368,14 +374,14 @@ class _WasteScreenState extends State<WasteScreen> {
                         Radio(
                           value: true,
                           groupValue: isCash,
-                          onChanged: (v) => setStatePopup(() => isCash = true),
+                          onChanged: isSubmitting ? null : (v) => setStatePopup(() => isCash = true),
                         ),
                         const Text("Cash"),
                         const SizedBox(width: 30),
                         Radio(
                           value: false,
                           groupValue: isCash,
-                          onChanged: (v) => setStatePopup(() => isCash = false),
+                          onChanged: isSubmitting ? null : (v) => setStatePopup(() => isCash = false),
                         ),
                         const Text("Online"),
                       ],
@@ -410,7 +416,7 @@ class _WasteScreenState extends State<WasteScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         ElevatedButton(
-                          onPressed: () => Navigator.pop(context),
+                          onPressed: isSubmitting ? null : () => Navigator.pop(sheetContext),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.black,
                             padding: const EdgeInsets.symmetric(
@@ -425,30 +431,87 @@ class _WasteScreenState extends State<WasteScreen> {
                         ),
 
                         ElevatedButton(
-                          onPressed: () {
-                            //
-                            Navigator.of(
-                              context,
-                              rootNavigator: true,
-                            ).pop(); // close bottom sheet properly
-                            Future.delayed(
-                              const Duration(milliseconds: 80),
-                              () {
-                                showSuccessPopup(context);
-                              },
-                            );
-                          },
+                          onPressed: isSubmitting
+                              ? null
+                              : () async {
+                                  setStatePopup(() {
+                                    isSubmitting = true;
+                                  });
+
+                                  try {
+                                    final parsedQty = double.tryParse(qty) ?? 0.0;
+                                    final weight = parsedQty > 0 ? parsedQty : 1.0;
+                                    final rate = selectedBag == "SMALL"
+                                        ? 7.0
+                                        : selectedBag == "MEDIUM"
+                                            ? 10.0
+                                            : selectedBag == "X SMALL"
+                                                ? 5.0
+                                                : selectedBag == "TVM BAG"
+                                                    ? 7.0
+                                                    : 10.0;
+                                    final totalAmount = weight * rate;
+
+                                    await BillApiService.createBill(
+                                      pickupId: widget.orderData.id,
+                                      weight: weight,
+                                      rate: rate,
+                                      totalAmount: totalAmount,
+                                      paymentMethod: isCash ? "cash" : "online",
+                                      paymentStatus: "paid",
+                                      wasteType: wasteType.isNotEmpty
+                                          ? wasteType
+                                          : widget.orderData.itemsDescription,
+                                      collectorName: context.read<ProfileProvider>().username,
+                                      wardName: widget.orderData.ward,
+                                      localBody: widget.orderData.localBody,
+                                    );
+
+                                    if (context.mounted) {
+                                      Navigator.of(sheetContext).pop(); // Close bottom sheet
+                                      Future.delayed(
+                                        const Duration(milliseconds: 80),
+                                        () {
+                                          if (context.mounted) {
+                                            showSuccessPopup(context);
+                                          }
+                                        },
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      setStatePopup(() {
+                                        isSubmitting = false;
+                                      });
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Failed to submit collection: $e'),
+                                          backgroundColor: Colors.redAccent,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xFF4CAF50),
+                            backgroundColor: const Color(0xFF4CAF50),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 30,
                               vertical: 12,
                             ),
                           ),
-                          child: const Text(
-                            "Complete",
-                            style: TextStyle(color: Colors.white),
-                          ),
+                          child: isSubmitting
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text(
+                                  "Complete",
+                                  style: TextStyle(color: Colors.white),
+                                ),
                         ),
                       ],
                     ),
@@ -478,9 +541,11 @@ class _WasteScreenState extends State<WasteScreen> {
               ).pop(); // close popup
 
               Future.delayed(const Duration(milliseconds: 50), () {
-                Navigator.of(context, rootNavigator: true).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const CollectorScreen()),
-                );
+                if (context.mounted) {
+                  Navigator.of(context, rootNavigator: true).pushReplacement(
+                    MaterialPageRoute(builder: (_) => const CollectorScreen()),
+                  );
+                }
               });
             },
             child: const Text("OK"),

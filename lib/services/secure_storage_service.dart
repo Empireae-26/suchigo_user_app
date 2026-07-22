@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class SecureStorageService {
@@ -8,51 +9,108 @@ class SecureStorageService {
   static const _displayNameKey = 'auth_display_name';
 
   static Future<void> saveToken(String token) async {
-    await _storage.write(key: _tokenKey, value: token);
+    try {
+      await _storage.write(key: _tokenKey, value: token);
+    } catch (e) {
+      debugPrint('[SecureStorageService] Error writing token: $e');
+    }
   }
 
   static Future<String?> getToken() async {
-    return await _storage.read(key: _tokenKey);
+    try {
+      return await _storage.read(key: _tokenKey);
+    } catch (e) {
+      debugPrint('[SecureStorageService] Error reading token: $e');
+      try {
+        await _storage.delete(key: _tokenKey);
+      } catch (_) {}
+      return null;
+    }
   }
 
   static Future<void> saveUsername(String username) async {
-    await _storage.write(key: _usernameKey, value: username);
+    try {
+      await _storage.write(key: _usernameKey, value: username);
+    } catch (e) {
+      debugPrint('[SecureStorageService] Error writing username: $e');
+    }
   }
 
   static Future<String?> getUsername() async {
-    return await _storage.read(key: _usernameKey);
+    try {
+      return await _storage.read(key: _usernameKey);
+    } catch (e) {
+      debugPrint('[SecureStorageService] Error reading username: $e');
+      return null;
+    }
   }
 
   static Future<void> saveDisplayName(String displayName) async {
-    await _storage.write(key: _displayNameKey, value: displayName);
+    try {
+      await _storage.write(key: _displayNameKey, value: displayName);
+    } catch (e) {
+      debugPrint('[SecureStorageService] Error writing displayName: $e');
+    }
   }
 
   static Future<String?> getDisplayName() async {
-    return await _storage.read(key: _displayNameKey);
+    try {
+      return await _storage.read(key: _displayNameKey);
+    } catch (e) {
+      debugPrint('[SecureStorageService] Error reading displayName: $e');
+      return null;
+    }
   }
 
   static Future<void> savePhoneNumber(String phoneNumber) async {
-    await _storage.write(key: 'auth_phone', value: phoneNumber);
+    try {
+      await _storage.write(key: 'auth_phone', value: phoneNumber);
+    } catch (e) {
+      debugPrint('[SecureStorageService] Error writing phoneNumber: $e');
+    }
   }
 
   static Future<String?> getPhoneNumber() async {
-    return await _storage.read(key: 'auth_phone');
+    try {
+      return await _storage.read(key: 'auth_phone');
+    } catch (e) {
+      debugPrint('[SecureStorageService] Error reading phoneNumber: $e');
+      return null;
+    }
   }
 
   static Future<void> saveEmail(String email) async {
-    await _storage.write(key: 'auth_email', value: email);
+    try {
+      await _storage.write(key: 'auth_email', value: email);
+    } catch (e) {
+      debugPrint('[SecureStorageService] Error writing email: $e');
+    }
   }
 
   static Future<String?> getEmail() async {
-    return await _storage.read(key: 'auth_email');
+    try {
+      return await _storage.read(key: 'auth_email');
+    } catch (e) {
+      debugPrint('[SecureStorageService] Error reading email: $e');
+      return null;
+    }
   }
 
   static Future<void> saveRefills(String refillsJson) async {
-    await _storage.write(key: 'wallet_refills', value: refillsJson);
+    try {
+      await _storage.write(key: 'wallet_refills', value: refillsJson);
+    } catch (e) {
+      debugPrint('[SecureStorageService] Error writing refills: $e');
+    }
   }
 
   static Future<String?> getRefills() async {
-    return await _storage.read(key: 'wallet_refills');
+    try {
+      return await _storage.read(key: 'wallet_refills');
+    } catch (e) {
+      debugPrint('[SecureStorageService] Error reading refills: $e');
+      return null;
+    }
   }
 
   static const _regStateKey = 'reg_state';
@@ -61,35 +119,71 @@ class SecureStorageService {
   static const _regWardKey = 'reg_ward';
 
   static Future<void> saveRegisteredState(String state) async {
-    await _storage.write(key: _regStateKey, value: state);
+    try {
+      await _storage.write(key: _regStateKey, value: state);
+    } catch (e) {
+      debugPrint('[SecureStorageService] Error writing regState: $e');
+    }
   }
 
   static Future<String?> getRegisteredState() async {
-    return await _storage.read(key: _regStateKey);
+    try {
+      return await _storage.read(key: _regStateKey);
+    } catch (e) {
+      debugPrint('[SecureStorageService] Error reading regState: $e');
+      return null;
+    }
   }
 
   static Future<void> saveRegisteredDistrict(String district) async {
-    await _storage.write(key: _regDistrictKey, value: district);
+    try {
+      await _storage.write(key: _regDistrictKey, value: district);
+    } catch (e) {
+      debugPrint('[SecureStorageService] Error writing regDistrict: $e');
+    }
   }
 
   static Future<String?> getRegisteredDistrict() async {
-    return await _storage.read(key: _regDistrictKey);
+    try {
+      return await _storage.read(key: _regDistrictKey);
+    } catch (e) {
+      debugPrint('[SecureStorageService] Error reading regDistrict: $e');
+      return null;
+    }
   }
 
   static Future<void> saveRegisteredLocalBody(String localBody) async {
-    await _storage.write(key: _regLocalBodyKey, value: localBody);
+    try {
+      await _storage.write(key: _regLocalBodyKey, value: localBody);
+    } catch (e) {
+      debugPrint('[SecureStorageService] Error writing regLocalBody: $e');
+    }
   }
 
   static Future<String?> getRegisteredLocalBody() async {
-    return await _storage.read(key: _regLocalBodyKey);
+    try {
+      return await _storage.read(key: _regLocalBodyKey);
+    } catch (e) {
+      debugPrint('[SecureStorageService] Error reading regLocalBody: $e');
+      return null;
+    }
   }
 
   static Future<void> saveRegisteredWard(String ward) async {
-    await _storage.write(key: _regWardKey, value: ward);
+    try {
+      await _storage.write(key: _regWardKey, value: ward);
+    } catch (e) {
+      debugPrint('[SecureStorageService] Error writing regWard: $e');
+    }
   }
 
   static Future<String?> getRegisteredWard() async {
-    return await _storage.read(key: _regWardKey);
+    try {
+      return await _storage.read(key: _regWardKey);
+    } catch (e) {
+      debugPrint('[SecureStorageService] Error reading regWard: $e');
+      return null;
+    }
   }
 
   static const _bookingAddressKey = 'booking_address';
@@ -97,35 +191,73 @@ class SecureStorageService {
   static const _bookingPincodeKey = 'booking_pincode';
 
   static Future<void> saveBookingAddress(String address) async {
-    await _storage.write(key: _bookingAddressKey, value: address);
+    try {
+      await _storage.write(key: _bookingAddressKey, value: address);
+    } catch (e) {
+      debugPrint('[SecureStorageService] Error writing bookingAddress: $e');
+    }
   }
 
   static Future<String?> getBookingAddress() async {
-    return await _storage.read(key: _bookingAddressKey);
+    try {
+      return await _storage.read(key: _bookingAddressKey);
+    } catch (e) {
+      debugPrint('[SecureStorageService] Error reading bookingAddress: $e');
+      return null;
+    }
   }
 
   static Future<void> saveBookingCity(String city) async {
-    await _storage.write(key: _bookingCityKey, value: city);
+    try {
+      await _storage.write(key: _bookingCityKey, value: city);
+    } catch (e) {
+      debugPrint('[SecureStorageService] Error writing bookingCity: $e');
+    }
   }
 
   static Future<String?> getBookingCity() async {
-    return await _storage.read(key: _bookingCityKey);
+    try {
+      return await _storage.read(key: _bookingCityKey);
+    } catch (e) {
+      debugPrint('[SecureStorageService] Error reading bookingCity: $e');
+      return null;
+    }
   }
 
   static Future<void> saveBookingPincode(String pincode) async {
-    await _storage.write(key: _bookingPincodeKey, value: pincode);
+    try {
+      await _storage.write(key: _bookingPincodeKey, value: pincode);
+    } catch (e) {
+      debugPrint('[SecureStorageService] Error writing bookingPincode: $e');
+    }
   }
 
   static Future<String?> getBookingPincode() async {
-    return await _storage.read(key: _bookingPincodeKey);
+    try {
+      return await _storage.read(key: _bookingPincodeKey);
+    } catch (e) {
+      debugPrint('[SecureStorageService] Error reading bookingPincode: $e');
+      return null;
+    }
   }
 
   static Future<void> clearAll() async {
-    await _storage.delete(key: _tokenKey);
-    await _storage.delete(key: _usernameKey);
-    await _storage.delete(key: _displayNameKey);
-    await _storage.delete(key: 'auth_phone');
-    await _storage.delete(key: 'auth_email');
-    await _storage.delete(key: 'wallet_refills');
+    try {
+      await _storage.delete(key: _tokenKey);
+      await _storage.delete(key: _usernameKey);
+      await _storage.delete(key: _displayNameKey);
+      await _storage.delete(key: 'auth_phone');
+      await _storage.delete(key: 'auth_email');
+      await _storage.delete(key: 'wallet_refills');
+      await _storage.delete(key: _regStateKey);
+      await _storage.delete(key: _regDistrictKey);
+      await _storage.delete(key: _regLocalBodyKey);
+      await _storage.delete(key: _regWardKey);
+      await _storage.delete(key: _bookingAddressKey);
+      await _storage.delete(key: _bookingCityKey);
+      await _storage.delete(key: _bookingPincodeKey);
+    } catch (e) {
+      debugPrint('[SecureStorageService] Error clearing all keys: $e');
+    }
   }
 }

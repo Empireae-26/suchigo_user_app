@@ -172,14 +172,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 14),
                   _buildInput(
-                    hint: 'Email Address',
+                    hint: 'Email Address (Optional)',
                     controller: _emailController,
                     type: TextInputType.emailAddress,
                     icon: Icons.email_outlined,
                   ),
                   const SizedBox(height: 14),
                   _buildInput(
-                    hint: 'Phone (e.g., +919998887776)',
+                    hint: 'Phone (e.g., 9998887776)',
                     controller: _phoneController,
                     type: TextInputType.phone,
                     icon: Icons.phone_outlined,
@@ -427,6 +427,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     required TextInputType type,
     required IconData icon,
     bool isPassword = false,
+    String? prefixText,
   }) {
     const primaryGreen = Color(0xFF1E713D);
 
@@ -440,7 +441,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
         hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
         filled: true,
         fillColor: Colors.grey.shade50,
-        prefixIcon: Icon(icon, color: Colors.grey.shade500, size: 20),
+        prefixIcon: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(width: 12),
+            Icon(icon, color: Colors.grey.shade500, size: 20),
+            if (prefixText != null) ...[
+              const SizedBox(width: 8),
+              Text(
+                prefixText,
+                style: const TextStyle(
+                  color: Colors.black87,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+            const SizedBox(width: 8),
+          ],
+        ),
         suffixIcon: isPassword
             ? IconButton(
                 icon: Icon(

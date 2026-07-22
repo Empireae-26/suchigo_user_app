@@ -420,7 +420,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       // Move to the next screen instead of mutating state further.
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const WasteScreen()),
+        MaterialPageRoute(builder: (context) => WasteScreen(orderData: widget.orderData)),
       );
       return;
     }

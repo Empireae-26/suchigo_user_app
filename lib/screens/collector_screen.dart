@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:suchigo_app/screens/AddOrder_Screen.dart';
 import 'package:suchigo_app/screens/select_ward_screen.dart';
 import 'package:suchigo_app/providers/CollectorProvider.dart';
-import 'package:suchigo_app/screens/welcome_screen.dart';
+import 'package:suchigo_app/screens/login_screen.dart';
 
 class CollectorScreen extends StatefulWidget {
   const CollectorScreen({super.key});
@@ -93,7 +93,7 @@ class _CollectorScreenState extends State<CollectorScreen> {
                                 Navigator.pushReplacement(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => const WelcomeScreen(),
+                                    builder: (_) => const LoginScreen(),
                                   ),
                                 );
                               },

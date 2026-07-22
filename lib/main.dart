@@ -9,8 +9,6 @@ import 'package:suchigo_app/screens/home_screen.dart';
 import 'package:suchigo_app/screens/login_screen.dart';
 import 'package:suchigo_app/screens/register_screen.dart';
 import 'package:suchigo_app/screens/signin_screen.dart';
-import 'package:suchigo_app/screens/spalsh_screen.dart';
-import 'package:suchigo_app/screens/welcome_screen.dart';
 import 'package:suchigo_app/screens/splash_screen_auth.dart';
 import 'package:suchigo_app/services/api_client.dart';
 import 'package:suchigo_app/providers/AddressProvider.dart';
@@ -27,8 +25,14 @@ import 'package:suchigo_app/providers/settings_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService.instance.init();
-  await NotificationService.instance.requestPermissions();
+  
+  try {
+    await NotificationService.instance.init();
+    await NotificationService.instance.requestPermissions();
+  } catch (e, stack) {
+    debugPrint("Notification service initialization failed: $e");
+    debugPrint("$stack");
+  }
 
   try {
     await Firebase.initializeApp(

@@ -215,7 +215,7 @@ class _BillScreenState extends State<BillScreen> {
                                     crossAxisCount: 2,
                                     crossAxisSpacing: 14,
                                     mainAxisSpacing: 14,
-                                    childAspectRatio: 1.0,
+                                    childAspectRatio: 0.85,
                                   ),
                               itemCount: categories.length,
                               itemBuilder: (context, index) {
